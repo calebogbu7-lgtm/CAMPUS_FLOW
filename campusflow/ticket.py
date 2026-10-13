@@ -1,7 +1,12 @@
 _next_ticket_number = 1
 
+VALID_URGENCIES = ("low", "medium", "high")
+VALID_CATEGORIES = ("network", "hardware", "software", "other")
+
 
 def generate_ticket_id():
+    """Generate a unique ticket ID."""
+
     global _next_ticket_number
 
     ticket_id = f"T{_next_ticket_number:03d}"
@@ -10,32 +15,42 @@ def generate_ticket_id():
     return ticket_id
 
 
-def validate_ticket_data(urgency, affected_users):
-    valid_urgencies = ("low", "medium", "high")
+def validate_ticket_data(title, category, urgency, affected_users):
+    """Validate all ticket details."""
 
-    if urgency not in valid_urgencies:
+    if not isinstance(title, str) or not title.strip():
+        raise ValueError("Ticket title cannot be blank.")
+
+    if (
+        not isinstance(category, str)
+        or category.strip().lower() not in VALID_CATEGORIES
+    ):
         raise ValueError(
-            "Urgency must be low, medium, or high."
+            "Category must be Network, Hardware, Software, or Other."
         )
+
+    if (
+        not isinstance(urgency, str)
+        or urgency.strip().lower() not in VALID_URGENCIES
+    ):
+        raise ValueError("Urgency must be low, medium, or high.")
 
     if (
         not isinstance(affected_users, int)
         or isinstance(affected_users, bool)
     ):
-        raise ValueError(
-            "Affected users must be a whole number."
-        )
+        raise ValueError("Affected users must be a whole number.")
 
     if affected_users < 1:
-        raise ValueError(
-            "At least one user must be affected."
-        )
+        raise ValueError("At least one user must be affected.")
 
     return True
 
 
 def calculate_priority(urgency, affected_users):
-    validate_ticket_data(urgency, affected_users)
+    """Calculate priority using the required rules."""
+
+    urgency = urgency.strip().lower()
 
     if urgency == "high" and affected_users >= 10:
         return "critical"
@@ -49,11 +64,26 @@ def calculate_priority(urgency, affected_users):
     return "low"
 
 
-def create_ticket(urgency, affected_users):
+def create_ticket(title, category, urgency, affected_users):
+    """Validate details and create a ticket."""
+
+    validate_ticket_data(
+        title,
+        category,
+        urgency,
+        affected_users,
+    )
+
+    title = title.strip()
+    category = category.strip().title()
+    urgency = urgency.strip().lower()
+
     priority = calculate_priority(urgency, affected_users)
 
     ticket = {
         "ticket_id": generate_ticket_id(),
+        "title": title,
+        "category": category,
         "urgency": urgency,
         "affected_users": affected_users,
         "priority": priority,
@@ -62,4 +92,3 @@ def create_ticket(urgency, affected_users):
     }
 
     return ticket
-

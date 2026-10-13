@@ -6,6 +6,8 @@ from storage import load_tickets, save_tickets
 
 def display_ticket(ticket):
     print(f"\nTicket ID: {ticket['ticket_id']}")
+    print(f"Title: {ticket.get('title', 'Not provided')}")
+    print(f"Category: {ticket.get('category', 'Not provided')}")
     print(f"Urgency: {ticket['urgency']}")
     print(f"Affected users: {ticket['affected_users']}")
     print(f"Priority: {ticket['priority']}")
@@ -15,10 +17,54 @@ def display_ticket(ticket):
 
 def create_new_ticket(tickets):
     try:
-        urgency = input("Urgency (low/medium/high): ").strip().lower()
-        affected_users = int(input("Number of affected users: "))
+        title = input("Enter ticket title: ").strip()
 
-        ticket = create_ticket(urgency, affected_users)
+        if not title:
+            print("Error: Ticket title cannot be blank.")
+            return
+
+        print("\nSelect ticket category:")
+        print("1. Network")
+        print("2. Hardware")
+        print("3. Software")
+        print("4. Other")
+
+        categories = {
+            "1": "Network",
+            "2": "Hardware",
+            "3": "Software",
+            "4": "Other",
+        }
+
+        category_choice = input("Choose category (1-4): ").strip()
+
+        if category_choice not in categories:
+            print("Error: Invalid category selection.")
+            return
+
+        category = categories[category_choice]
+
+        urgency = input(
+            "Urgency (low/medium/high): "
+        ).strip().lower()
+
+        affected_users_input = input(
+            "Number of affected users: "
+        ).strip()
+
+        try:
+            affected_users = int(affected_users_input)
+        except ValueError:
+            print("Error: Affected users must be a whole number.")
+            return
+
+        ticket = create_ticket(
+            title=title,
+            category=category,
+            urgency=urgency,
+            affected_users=affected_users,
+        )
+
         tickets.append(ticket)
         save_tickets(tickets)
 
@@ -57,6 +103,7 @@ def assign_existing_ticket(tickets):
 
 def change_ticket_status(tickets):
     ticket_id = input("Enter ticket ID: ").strip()
+
     new_status = input(
         "New status (in_progress/resolved): "
     ).strip().lower()
@@ -113,7 +160,7 @@ def show_report(tickets):
 def main():
     try:
         tickets = load_tickets()
-    except ValueError as error:
+    except (ValueError, OSError) as error:
         print(f"Could not load saved tickets: {error}")
         return
 

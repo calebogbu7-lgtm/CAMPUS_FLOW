@@ -2,6 +2,7 @@ from ticket import create_ticket
 from workflow import assign_ticket, update_status, get_work_queue
 from reports import generate_report
 from storage import load_tickets, save_tickets
+from notes import add_note, get_ticket_notes
 
 
 def display_ticket(ticket):
@@ -18,10 +19,6 @@ def display_ticket(ticket):
 def create_new_ticket(tickets):
     try:
         title = input("Enter ticket title: ").strip()
-
-        if not title:
-            print("Error: Ticket title cannot be blank.")
-            return
 
         print("\nSelect ticket category:")
         print("1. Network")
@@ -65,10 +62,20 @@ def create_new_ticket(tickets):
             affected_users=affected_users,
         )
 
-        tickets.append(ticket)
-        save_tickets(tickets)
+        # Ensure new tickets have a notes list.
+        ticket.setdefault("notes", [])
 
-        print("\nTicket created successfully.")
+        tickets.append(ticket)
+
+        try:
+            save_tickets(tickets)
+        except (OSError, ValueError) as error:
+            tickets.remove(ticket)
+            print(f"Error saving ticket: {error}")
+            return
+
+        print("\nTicket created successfully!")
+        print(f"Your Ticket ID is: {ticket['ticket_id']}")
         display_ticket(ticket)
 
     except ValueError as error:
@@ -84,41 +91,50 @@ def list_tickets(tickets):
         display_ticket(ticket)
 
 
+def find_ticket(tickets, ticket_id):
+    for ticket in tickets:
+        if ticket.get("ticket_id") == ticket_id:
+            return ticket
+
+    return None
+
+
 def assign_existing_ticket(tickets):
     ticket_id = input("Enter ticket ID: ").strip()
+    ticket = find_ticket(tickets, ticket_id)
+
+    if ticket is None:
+        print("Ticket not found.")
+        return
+
     staff_name = input("Enter staff name: ").strip()
 
-    for ticket in tickets:
-        if ticket["ticket_id"] == ticket_id:
-            try:
-                assign_ticket(ticket, staff_name)
-                save_tickets(tickets)
-                print("Ticket assigned successfully.")
-            except ValueError as error:
-                print(f"Error: {error}")
-            return
-
-    print("Ticket not found.")
+    try:
+        assign_ticket(ticket, staff_name)
+        save_tickets(tickets)
+        print("Ticket assigned successfully.")
+    except (ValueError, OSError) as error:
+        print(f"Error: {error}")
 
 
 def change_ticket_status(tickets):
     ticket_id = input("Enter ticket ID: ").strip()
+    ticket = find_ticket(tickets, ticket_id)
+
+    if ticket is None:
+        print("Ticket not found.")
+        return
 
     new_status = input(
         "New status (in_progress/resolved): "
     ).strip().lower()
 
-    for ticket in tickets:
-        if ticket["ticket_id"] == ticket_id:
-            try:
-                update_status(ticket, new_status)
-                save_tickets(tickets)
-                print("Ticket status updated successfully.")
-            except ValueError as error:
-                print(f"Error: {error}")
-            return
-
-    print("Ticket not found.")
+    try:
+        update_status(ticket, new_status)
+        save_tickets(tickets)
+        print("Ticket status updated successfully.")
+    except (ValueError, OSError) as error:
+        print(f"Error: {error}")
 
 
 def show_work_queue(tickets):
@@ -157,6 +173,41 @@ def show_report(tickets):
         print(f"Error generating report: {error}")
 
 
+def add_ticket_note(tickets):
+    ticket_id = input("Enter ticket ID: ").strip()
+    author = input("Enter your name: ").strip()
+    message = input("Enter note: ").strip()
+
+    try:
+        add_note(tickets, ticket_id, author, message)
+        save_tickets(tickets)
+        print("Note added successfully.")
+
+    except (ValueError, OSError) as error:
+        print(f"Error: {error}")
+
+
+def view_ticket_notes(tickets):
+    ticket_id = input("Enter ticket ID: ").strip()
+
+    try:
+        notes = get_ticket_notes(tickets, ticket_id)
+
+        if not notes:
+            print("No notes found for this ticket.")
+            return
+
+        print(f"\n--- NOTES FOR {ticket_id} ---")
+
+        for note in notes:
+            print(f"\nNote ID: {note['note_id']}")
+            print(f"Author: {note['author']}")
+            print(f"Message: {note['message']}")
+
+    except ValueError as error:
+        print(f"Error: {error}")
+
+
 def main():
     try:
         tickets = load_tickets()
@@ -172,28 +223,46 @@ def main():
         print("4. Update ticket status")
         print("5. View work queue")
         print("6. Generate report")
-        print("7. Exit")
+        print("7. Add note")
+        print("8. View ticket notes")
+        print("9. Exit")
 
         choice = input("Choose an option: ").strip()
 
         if choice == "1":
             create_new_ticket(tickets)
+
         elif choice == "2":
             list_tickets(tickets)
+
         elif choice == "3":
             assign_existing_ticket(tickets)
+
         elif choice == "4":
             change_ticket_status(tickets)
+
         elif choice == "5":
             show_work_queue(tickets)
+
         elif choice == "6":
             show_report(tickets)
+
         elif choice == "7":
-            save_tickets(tickets)
-            print("CampusFlow closed. Goodbye!")
-            break
+            add_ticket_note(tickets)
+
+        elif choice == "8":
+            view_ticket_notes(tickets)
+
+        elif choice == "9":
+            try:
+                save_tickets(tickets)
+                print("CampusFlow closed. Goodbye!")
+                break
+            except (OSError, ValueError) as error:
+                print(f"Error saving tickets: {error}")
+
         else:
-            print("Invalid choice. Enter a number from 1 to 7.")
+            print("Invalid choice. Enter a number from 1 to 9.")
 
 
 if __name__ == "__main__":

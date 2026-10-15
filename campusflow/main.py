@@ -1,88 +1,123 @@
 """Command-line interface for the CampusFlow helpdesk application."""
 
+from copy import deepcopy
+from pprint import pprint
+
 from campusflow.storage import load_tickets, save_tickets
 from campusflow.ticket import create_ticket
-from campusflow.workflow import assign_ticket, update_status, get_work_queue
+from campusflow.workflow import assign_ticket, get_work_queue, update_status
 from campusflow.reports import generate_report
 from campusflow.search import search_tickets, sort_search_results
 from campusflow.notes import add_note, get_ticket_notes
 from campusflow.understanding_check import run_understanding_check
 
 
+CATEGORIES = {"network", "hardware", "software", "other"}
+STATUSES = {"open", "in_progress", "resolved"}
+PRIORITIES = {"critical", "high", "medium", "low"}
+SAVE_ERRORS = (OSError, ValueError, TypeError)
+
+
 def display_ticket(ticket):
     """Display the details of a single ticket."""
-
     print("\n" + "=" * 45)
-    print(f"Ticket ID:       {ticket.get('ticket_id', 'N/A')}")
-    print(f"Title:           {ticket.get('title', 'N/A')}")
-    print(f"Category:        {ticket.get('category', 'N/A')}")
-    print(f"Urgency:         {ticket.get('urgency', 'N/A')}")
-    print(f"Affected users:  {ticket.get('affected_users', 'N/A')}")
-    print(f"Priority:        {ticket.get('priority', 'N/A')}")
-    print(f"Status:          {ticket.get('status', 'N/A')}")
-    print(f"Assigned to:     {ticket.get('assigned_to') or 'Unassigned'}")
+    for label, key in (
+        ("Ticket ID", "ticket_id"),
+        ("Title", "title"),
+        ("Category", "category"),
+        ("Urgency", "urgency"),
+        ("Affected users", "affected_users"),
+        ("Priority", "priority"),
+        ("Status", "status"),
+    ):
+        print(f"{label + ':':18}{ticket.get(key, 'N/A')}")
+
+    print(f"{'Assigned to:':18}{ticket.get('assigned_to') or 'Unassigned'}")
     print("=" * 45)
 
 
 def find_ticket_by_id(tickets, ticket_id):
-    """Find a ticket by ID without requiring matching letter case."""
-
+    """Return exactly one case-insensitive ticket ID match, or None."""
     if not isinstance(ticket_id, str) or not ticket_id.strip():
         return None
 
     requested_id = ticket_id.strip().casefold()
-
     matches = [
-        ticket
-        for ticket in tickets
-        if isinstance(ticket.get("ticket_id"), str)
+        ticket for ticket in tickets
+        if isinstance(ticket, dict)
+        and isinstance(ticket.get("ticket_id"), str)
         and ticket["ticket_id"].casefold() == requested_id
     ]
+    return matches[0] if len(matches) == 1 else None
 
-    if len(matches) != 1:
-        return None
 
-    return matches[0]
+def ticket_id_exists(tickets, ticket_id):
+    """Return whether a ticket ID already exists."""
+    if not isinstance(ticket_id, str):
+        return False
+
+    requested_id = ticket_id.casefold()
+    return any(
+        isinstance(ticket, dict)
+        and isinstance(ticket.get("ticket_id"), str)
+        and ticket["ticket_id"].casefold() == requested_id
+        for ticket in tickets
+    )
+
+
+def save_change(tickets, action, operation):
+    """Run a ticket operation and save it, rolling back on failure."""
+    original_tickets = deepcopy(tickets)
+
+    try:
+        operation()
+        save_tickets(tickets)
+    except (ValueError, TypeError, OSError, KeyError) as error:
+        tickets[:] = original_tickets
+        print(f"Could not {action}: {error}")
+        return False
+
+    return True
+
+
+def request_ticket(tickets, action):
+    """Ask for a ticket ID and return the matching ticket, if unique."""
+    ticket_id = input("Enter ticket ID: ").strip()
+    ticket = find_ticket_by_id(tickets, ticket_id)
+
+    if ticket is None:
+        print(f"Could not {action}: Ticket not found or ID is ambiguous.")
+    return ticket
 
 
 def create_new_ticket(tickets):
-    """Collect ticket details and create a new ticket."""
-
+    """Collect ticket details, create a ticket, and persist it."""
     print("\n--- Create Ticket ---")
-
     title = input("Title: ").strip()
-    category = input(
-        "Category (Network, Hardware, Software, Other): "
-    ).strip()
+    category = input("Category (Network, Hardware, Software, Other): ").strip()
     urgency = input("Urgency (low, medium, high): ").strip()
 
     try:
         affected_users = int(input("Affected users: ").strip())
-
         ticket = create_ticket(
             title=title,
             category=category,
             urgency=urgency,
             affected_users=affected_users,
         )
-
-        if find_ticket_by_id(tickets, ticket.get("ticket_id")) is not None:
-            print("Could not create ticket: Duplicate ticket ID.")
-            return
-
-        tickets.append(ticket)
-
-        try:
-            save_tickets(tickets)
-        except (OSError, ValueError, TypeError) as error:
-            tickets.remove(ticket)
-            print(f"Could not save the ticket: {error}")
-            return
-
     except (ValueError, TypeError) as error:
         print(f"Could not create ticket: {error}")
         return
-    except OSError as error:
+
+    if ticket_id_exists(tickets, ticket.get("ticket_id")):
+        print("Could not create ticket: Duplicate ticket ID.")
+        return
+
+    tickets.append(ticket)
+    try:
+        save_tickets(tickets)
+    except (OSError, ValueError, TypeError) as error:
+        tickets.remove(ticket)
         print(f"Could not save the ticket: {error}")
         return
 
@@ -92,9 +127,7 @@ def create_new_ticket(tickets):
 
 def list_tickets(tickets):
     """Display all saved tickets."""
-
     print("\n--- All Tickets ---")
-
     if not tickets:
         print("No tickets found.")
         return
@@ -104,164 +137,133 @@ def list_tickets(tickets):
 
 
 def assign_existing_ticket(tickets):
-    """Assign an existing ticket to a staff member."""
-
+    """Assign a ticket to a staff member and persist the change."""
     print("\n--- Assign Ticket ---")
-
-    ticket_id = input("Enter ticket ID: ").strip()
-    ticket = find_ticket_by_id(tickets, ticket_id)
-
+    ticket = request_ticket(tickets, "assign ticket")
     if ticket is None:
-        print("Could not assign ticket: Ticket not found.")
         return
 
     staff_name = input("Enter staff name: ").strip()
-
-    try:
-        assign_ticket(ticket, staff_name)
-        save_tickets(tickets)
-    except (ValueError, TypeError, OSError) as error:
-        print(f"Could not assign ticket: {error}")
-        return
-
-    print("\nTicket assigned successfully.")
-    display_ticket(ticket)
+    if save_change(
+        tickets, "assign ticket",
+        lambda: assign_ticket(ticket, staff_name),
+    ):
+        print("\nTicket assigned successfully.")
+        display_ticket(ticket)
 
 
 def change_ticket_status(tickets):
-    """Update the status of an existing ticket."""
-
+    """Update a ticket's status through the workflow rules."""
     print("\n--- Update Ticket Status ---")
-
-    ticket_id = input("Enter ticket ID: ").strip()
-    ticket = find_ticket_by_id(tickets, ticket_id)
-
+    ticket = request_ticket(tickets, "update status")
     if ticket is None:
-        print("Could not update status: Ticket not found.")
         return
 
-    new_status = input(
-        "New status (in_progress or resolved): "
-    ).strip().casefold()
-
+    new_status = input("New status (in_progress or resolved): ").strip().casefold()
     if new_status == "in progress":
         new_status = "in_progress"
 
-    try:
-        update_status(ticket, new_status)
-        save_tickets(tickets)
-    except (ValueError, TypeError, OSError) as error:
-        print(f"Could not update ticket status: {error}")
+    if save_change(
+        tickets, "update ticket status",
+        lambda: update_status(ticket, new_status),
+    ):
+        print("\nTicket status updated successfully.")
+        display_ticket(ticket)
+
+
+def reopen_existing_ticket(tickets):
+    """Reopen a resolved ticket without changing the workflow module."""
+    print("\n--- Reopen Resolved Ticket ---")
+    ticket = request_ticket(tickets, "reopen ticket")
+    if ticket is None:
         return
 
-    print("\nTicket status updated successfully.")
-    display_ticket(ticket)
+    def reopen():
+        if ticket.get("status") != "resolved":
+            raise ValueError("Only resolved tickets can be reopened.")
+        ticket["status"] = "open"
+
+    if save_change(tickets, "reopen ticket", reopen):
+        print("\nTicket reopened successfully.")
+        display_ticket(ticket)
 
 
 def show_work_queue(tickets):
-    """Display the work queue returned by the workflow module."""
-
+    """Display open tickets in priority order."""
     print("\n--- Open Work Queue ---")
 
     try:
         queue = get_work_queue(tickets)
-    except (ValueError, TypeError) as error:
+        open_tickets = sort_search_results([
+            ticket for ticket in queue
+            if ticket.get("status", "").casefold() == "open"
+        ])
+    except (ValueError, TypeError, KeyError, AttributeError) as error:
         print(f"Could not retrieve the work queue: {error}")
         return
 
-    if not queue:
-        print("The work queue is empty.")
+    if not open_tickets:
+        print("The open work queue is empty.")
         return
 
-    for ticket in queue:
+    for ticket in open_tickets:
         display_ticket(ticket)
 
 
 def show_report(tickets):
     """Generate and display the ticket report."""
-
     print("\n--- Ticket Report ---")
 
     try:
         report = generate_report(tickets)
-
-        # Support report functions that return text as well as
-        # report functions that display the report themselves.
         if report is not None:
-            print(report)
-
-    except (ValueError, TypeError) as error:
+            pprint(report) if isinstance(report, (dict, list, tuple)) else print(report)
+    except (ValueError, TypeError, KeyError) as error:
         print(f"Could not generate report: {error}")
 
 
-def search_existing_tickets(tickets):
-    """Search tickets using a title and optional filters."""
+def get_optional_filter(prompt, valid_choices):
+    """Collect a valid optional search filter."""
+    while True:
+        value = input(prompt).strip().casefold()
+        if not value:
+            return None
 
+        if value == "in progress":
+            value = "in_progress"
+
+        if value in valid_choices:
+            return value
+
+        choices = ", ".join(sorted(valid_choices))
+        print(f"Invalid choice. Enter one of: {choices}, or press Enter to skip.")
+
+
+def search_existing_tickets(tickets):
+    """Search tickets with optional filters and sorting."""
     print("\n--- Search Tickets ---")
     print("Press Enter to skip an optional filter.")
-
     title_query = input("Title contains: ").strip()
 
-    valid_categories = {
-        "network",
-        "hardware",
-        "software",
-        "other",
-    }
-    valid_statuses = {
-        "open",
-        "in_progress",
-        "resolved",
-    }
-    valid_priorities = {
-        "critical",
-        "high",
-        "medium",
-        "low",
-    }
-
-    def get_optional_filter(prompt, valid_choices):
-        """Collect an optional filter and validate its value."""
-
-        while True:
-            value = input(prompt).strip().casefold()
-
-            if not value:
-                return None
-
-            if value in valid_choices:
-                return value
-
-            print(
-                "Invalid choice. Enter one of: "
-                + ", ".join(sorted(valid_choices))
-                + ", or press Enter to skip."
-            )
-
     category = get_optional_filter(
-        "Category (Network, Hardware, Software, Other): ",
-        valid_categories,
+        "Category (Network, Hardware, Software, Other): ", CATEGORIES
     )
-
     status = get_optional_filter(
-        "Status (open, in_progress, resolved): ",
-        valid_statuses,
+        "Status (open, in_progress, resolved): ", STATUSES
     )
-
     priority = get_optional_filter(
-        "Priority (critical, high, medium, low): ",
-        valid_priorities,
+        "Priority (critical, high, medium, low): ", PRIORITIES
     )
 
     try:
         results = search_tickets(
             tickets,
-            title_query=title_query,
+            title=title_query,
             category=category,
             status=status,
             priority=priority,
         )
-    except (ValueError, TypeError) as error:
+    except (ValueError, TypeError, KeyError, AttributeError) as error:
         print(f"Search failed: {error}")
         return
 
@@ -270,60 +272,45 @@ def search_existing_tickets(tickets):
         return
 
     while True:
-        sort_choice = input(
-            "Sort results by priority and ticket ID? (y/n): "
-        ).strip().casefold()
-
-        if sort_choice in ("y", "yes", "n", "no"):
+        choice = input("Sort results by priority and ticket ID? (y/n): ")
+        choice = choice.strip().casefold()
+        if choice in {"y", "yes", "n", "no"}:
             break
-
         print("Please enter y or n.")
 
-    if sort_choice in ("y", "yes"):
-        results = sort_search_results(results)
+    if choice in {"y", "yes"}:
+        try:
+            results = sort_search_results(results)
+        except (ValueError, TypeError, KeyError, AttributeError) as error:
+            print(f"Could not sort search results: {error}")
+            return
 
     print(f"\nFound {len(results)} matching ticket(s).")
-
     for ticket in results:
         display_ticket(ticket)
 
 
 def add_ticket_note(tickets):
-    """Collect details and add a note to an existing ticket."""
-
+    """Add a note to a ticket and persist it."""
     print("\n--- Add Ticket Note ---")
-
-    ticket_id = input("Enter ticket ID: ").strip()
-
-    # Resolve the ID first so lowercase input also works.
-    ticket = find_ticket_by_id(tickets, ticket_id)
-
+    ticket = request_ticket(tickets, "add note")
     if ticket is None:
-        print("Could not add note: Ticket not found.")
         return
 
     author = input("Author name: ").strip()
     message = input("Note message: ").strip()
+    ticket_id = ticket["ticket_id"]
+    result = {}
 
-    # The note module requires the ticket's exact stored ID.
-    actual_ticket_id = ticket["ticket_id"]
+    def add_and_capture_note():
+        result["note"] = add_note(tickets, ticket_id, author, message)
 
-    try:
-        note = add_note(
-            tickets,
-            actual_ticket_id,
-            author,
-            message,
-        )
-
-        save_tickets(tickets)
-
-    except (ValueError, OSError, TypeError) as error:
-        print(f"Could not add note: {error}")
+    if not save_change(tickets, "add note", add_and_capture_note):
         return
 
+    note = result["note"]
     print("\nNote added successfully.")
-    print(f"Ticket ID: {actual_ticket_id}")
+    print(f"Ticket ID: {ticket_id}")
     print(f"Note ID: {note['note_id']}")
     print(f"Author:  {note['author']}")
     print(f"Message: {note['message']}")
@@ -331,25 +318,14 @@ def add_ticket_note(tickets):
 
 def view_ticket_notes(tickets):
     """Display notes associated with a ticket."""
-
     print("\n--- View Ticket Notes ---")
-
-    ticket_id = input("Enter ticket ID: ").strip()
-
-    # Resolve the ID first so lowercase input also works.
-    ticket = find_ticket_by_id(tickets, ticket_id)
-
+    ticket = request_ticket(tickets, "retrieve notes")
     if ticket is None:
-        print("Could not retrieve notes: Ticket not found.")
         return
 
-    # Pass the exact stored ID to the note module.
-    actual_ticket_id = ticket["ticket_id"]
-
     try:
-        notes = get_ticket_notes(tickets, actual_ticket_id)
-
-    except (ValueError, TypeError) as error:
+        notes = get_ticket_notes(tickets, ticket["ticket_id"])
+    except (ValueError, TypeError, KeyError) as error:
         print(f"Could not retrieve notes: {error}")
         return
 
@@ -357,94 +333,87 @@ def view_ticket_notes(tickets):
         print("No notes found for this ticket.")
         return
 
-    print(f"\nNotes for ticket {actual_ticket_id}:")
-
+    print(f"\nNotes for ticket {ticket['ticket_id']}:")
     for note in notes:
         print("\n" + "-" * 40)
         print(f"Note ID: {note['note_id']}")
         print(f"Author:  {note['author']}")
         print(f"Message: {note['message']}")
-
     print("-" * 40)
 
 
 def display_menu():
-    """Display the main application menu."""
-
-    print("\n========== CampusFlow ==========")
-    print("1. Create ticket")
-    print("2. List tickets")
-    print("3. Assign ticket")
-    print("4. Update ticket status")
-    print("5. View open work queue")
-    print("6. Generate report")
-    print("7. Search tickets")
-    print("8. Add ticket note")
-    print("9. View ticket notes")
-    print("10. Engineering Understanding Check")
-    print("0. Exit")
-    print("================================")
+    """Display the main CampusFlow menu."""
+    print(
+        "\n========== CampusFlow ==========\n"
+        "1. Create ticket\n"
+        "2. List tickets\n"
+        "3. Assign ticket\n"
+        "4. Update ticket status\n"
+        "5. View open work queue\n"
+        "6. Generate report\n"
+        "7. Search tickets\n"
+        "8. Add ticket note\n"
+        "9. View ticket notes\n"
+        "10. Engineering Understanding Check\n"
+        "11. Reopen resolved ticket\n"
+        "0. Save and exit\n"
+        "================================"
+    )
 
 
 def main():
-    """Run the CampusFlow command-line application."""
-
+    """Load saved tickets and run the interactive CLI."""
     try:
         tickets = load_tickets()
-
     except (OSError, ValueError, TypeError) as error:
         print(f"Could not load saved tickets: {error}")
         print("Please check the ticket data file before continuing.")
         return
 
+    actions = {
+        "1": create_new_ticket,
+        "2": list_tickets,
+        "3": assign_existing_ticket,
+        "4": change_ticket_status,
+        "5": show_work_queue,
+        "6": show_report,
+        "7": search_existing_tickets,
+        "8": add_ticket_note,
+        "9": view_ticket_notes,
+        "10": lambda _: run_understanding_check(),
+        "11": reopen_existing_ticket,
+    }
+
     while True:
         display_menu()
-        choice = input("Choose an option (0-10): ").strip()
-
-        if choice == "1":
-            create_new_ticket(tickets)
-
-        elif choice == "2":
-            list_tickets(tickets)
-
-        elif choice == "3":
-            assign_existing_ticket(tickets)
-
-        elif choice == "4":
-            change_ticket_status(tickets)
-
-        elif choice == "5":
-            show_work_queue(tickets)
-
-        elif choice == "6":
-            show_report(tickets)
-
-        elif choice == "7":
-            search_existing_tickets(tickets)
-
-        elif choice == "8":
-            add_ticket_note(tickets)
-
-        elif choice == "9":
-            view_ticket_notes(tickets)
-
-        elif choice == "10":
-            run_understanding_check()
-
-        elif choice == "0":
-            print("Saving tickets before exit...")
-
+        try:
+            choice = input("Choose an option (0-11): ").strip()
+        except EOFError:
+            print("\nInput closed. Attempting to save before exiting.")
             try:
                 save_tickets(tickets)
-            except (OSError, ValueError, TypeError) as error:
+            except SAVE_ERRORS as error:
+                print(f"Could not save tickets: {error}")
+                return
+            print("Tickets saved. Goodbye!")
+            return
+
+        if choice == "0":
+            try:
+                save_tickets(tickets)
+            except SAVE_ERRORS as error:
                 print(f"Could not save tickets: {error}")
                 continue
-
             print("Tickets saved. Goodbye!")
             break
 
-        else:
-            print("Invalid option. Please choose a number from 0 to 10.")
+        action = actions.get(choice)
+        if action is None:
+            print("Invalid option. Please choose a number from 0 to 11.")
+            continue
+
+        action(tickets)
 
 
 if __name__ == "__main__":

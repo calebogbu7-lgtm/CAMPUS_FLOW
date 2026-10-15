@@ -1,3 +1,4 @@
+from notes import add_note, get_ticket_notes
 from ticket import create_ticket
 from workflow import assign_ticket, update_status, get_work_queue
 from reports import generate_report
@@ -5,6 +6,7 @@ from storage import load_tickets, save_tickets
 
 
 def display_ticket(ticket):
+    """Display the details of a ticket."""
     print(f"\nTicket ID: {ticket['ticket_id']}")
     print(f"Title: {ticket.get('title', 'Not provided')}")
     print(f"Category: {ticket.get('category', 'Not provided')}")
@@ -16,6 +18,7 @@ def display_ticket(ticket):
 
 
 def create_new_ticket(tickets):
+    """Create a new helpdesk ticket."""
     try:
         title = input("Enter ticket title: ").strip()
 
@@ -63,6 +66,7 @@ def create_new_ticket(tickets):
             category=category,
             urgency=urgency,
             affected_users=affected_users,
+            tickets=tickets,
         )
 
         tickets.append(ticket)
@@ -71,11 +75,12 @@ def create_new_ticket(tickets):
         print("\nTicket created successfully.")
         display_ticket(ticket)
 
-    except ValueError as error:
-        print(f"Error: {error}")
+    except (ValueError, TypeError, OSError) as error:
+        print(f"Error creating ticket: {error}")
 
 
 def list_tickets(tickets):
+    """Display all tickets."""
     if not tickets:
         print("\nNo tickets found.")
         return
@@ -85,6 +90,7 @@ def list_tickets(tickets):
 
 
 def assign_existing_ticket(tickets):
+    """Assign a ticket to a staff member."""
     ticket_id = input("Enter ticket ID: ").strip()
     staff_name = input("Enter staff name: ").strip()
 
@@ -94,14 +100,15 @@ def assign_existing_ticket(tickets):
                 assign_ticket(ticket, staff_name)
                 save_tickets(tickets)
                 print("Ticket assigned successfully.")
-            except ValueError as error:
-                print(f"Error: {error}")
+            except (ValueError, TypeError, OSError) as error:
+                print(f"Error assigning ticket: {error}")
             return
 
     print("Ticket not found.")
 
 
 def change_ticket_status(tickets):
+    """Update the status of a ticket."""
     ticket_id = input("Enter ticket ID: ").strip()
 
     new_status = input(
@@ -114,14 +121,15 @@ def change_ticket_status(tickets):
                 update_status(ticket, new_status)
                 save_tickets(tickets)
                 print("Ticket status updated successfully.")
-            except ValueError as error:
-                print(f"Error: {error}")
+            except (ValueError, TypeError, OSError) as error:
+                print(f"Error updating status: {error}")
             return
 
     print("Ticket not found.")
 
 
 def show_work_queue(tickets):
+    """Display unresolved tickets."""
     try:
         queue = get_work_queue(tickets)
 
@@ -134,11 +142,12 @@ def show_work_queue(tickets):
         for ticket in queue:
             display_ticket(ticket)
 
-    except ValueError as error:
-        print(f"Error: {error}")
+    except (ValueError, TypeError) as error:
+        print(f"Error displaying work queue: {error}")
 
 
 def show_report(tickets):
+    """Display a summary of tickets."""
     try:
         report = generate_report(tickets)
 
@@ -153,11 +162,49 @@ def show_report(tickets):
         for priority, count in report["by_priority"].items():
             print(f"{priority}: {count}")
 
-    except (KeyError, ValueError) as error:
+    except (KeyError, ValueError, TypeError) as error:
         print(f"Error generating report: {error}")
 
 
+def add_ticket_note(tickets):
+    """Add a note to an existing ticket."""
+    ticket_id = input("Enter ticket ID: ").strip()
+    author = input("Enter your name: ").strip()
+    message = input("Enter your note: ").strip()
+
+    try:
+        add_note(tickets, ticket_id, author, message)
+        save_tickets(tickets)
+        print("Note added successfully.")
+
+    except (ValueError, TypeError, OSError) as error:
+        print(f"Error adding note: {error}")
+
+
+def view_ticket_notes(tickets):
+    """Display notes for a ticket."""
+    ticket_id = input("Enter ticket ID: ").strip()
+
+    try:
+        notes = get_ticket_notes(tickets, ticket_id)
+
+        if not notes:
+            print("No notes found for this ticket.")
+            return
+
+        print(f"\n--- NOTES FOR TICKET {ticket_id} ---")
+
+        for note in notes:
+            print(f"\nNote ID: {note['note_id']}")
+            print(f"Author: {note['author']}")
+            print(f"Message: {note['message']}")
+
+    except (ValueError, TypeError) as error:
+        print(f"Error viewing notes: {error}")
+
+
 def main():
+    """Run the CampusFlow helpdesk application."""
     try:
         tickets = load_tickets()
     except (ValueError, OSError) as error:
@@ -172,28 +219,48 @@ def main():
         print("4. Update ticket status")
         print("5. View work queue")
         print("6. Generate report")
-        print("7. Exit")
+        print("7. Add note")
+        print("8. View ticket notes")
+        print("9. Exit")
 
         choice = input("Choose an option: ").strip()
 
         if choice == "1":
             create_new_ticket(tickets)
+
         elif choice == "2":
             list_tickets(tickets)
+
         elif choice == "3":
             assign_existing_ticket(tickets)
+
         elif choice == "4":
             change_ticket_status(tickets)
+
         elif choice == "5":
             show_work_queue(tickets)
+
         elif choice == "6":
             show_report(tickets)
+
         elif choice == "7":
-            save_tickets(tickets)
+            add_ticket_note(tickets)
+
+        elif choice == "8":
+            view_ticket_notes(tickets)
+
+        elif choice == "9":
+            try:
+                save_tickets(tickets)
+            except (ValueError, OSError) as error:
+                print(f"Error saving tickets: {error}")
+                continue
+
             print("CampusFlow closed. Goodbye!")
             break
+
         else:
-            print("Invalid choice. Enter a number from 1 to 7.")
+            print("Invalid choice. Enter a number from 1 to 9.")
 
 
 if __name__ == "__main__":

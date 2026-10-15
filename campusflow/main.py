@@ -5,6 +5,8 @@ from campusflow.workflow import assign_ticket, update_status, get_work_queue
 from campusflow.reports import generate_report
 from campusflow.storage import load_tickets, save_tickets
 from campusflow.search import search_tickets, sort_search_results
+from campusflow.understanding_check import run_understanding_check
+from campusflow.notes import add_note, get_ticket_notes
 
 
 def display_ticket(ticket):
@@ -225,6 +227,54 @@ def search_existing_tickets(tickets):
             display_ticket(ticket)
 
 
+def add_ticket_note(tickets):
+    """Collect details and add a note to an existing ticket."""
+
+    print("\n--- Add Ticket Note ---")
+
+    ticket_id = input("Enter ticket ID: ").strip()
+    author = input("Enter your name: ").strip()
+    message = input("Enter note (5-300 characters): ").strip()
+
+    try:
+        note = add_note(tickets, ticket_id, author, message)
+        save_tickets(tickets)
+
+        print("\nNote added successfully.")
+        print(f"Note ID: {note['note_id']}")
+
+    except (ValueError, OSError, TypeError) as error:
+        print(f"Could not add note: {error}")
+
+
+def view_ticket_notes(tickets):
+    """Display all notes associated with a ticket."""
+
+    print("\n--- View Ticket Notes ---")
+
+    ticket_id = input("Enter ticket ID: ").strip()
+
+    try:
+        notes = get_ticket_notes(tickets, ticket_id)
+
+        if not notes:
+            print("This ticket has no notes.")
+            return
+
+        print(f"\nNotes for ticket {ticket_id}:")
+
+        for note in notes:
+            print("-" * 40)
+            print(f"Note ID: {note['note_id']}")
+            print(f"Author:  {note['author']}")
+            print(f"Message: {note['message']}")
+
+        print("-" * 40)
+
+    except (ValueError, TypeError) as error:
+        print(f"Could not retrieve notes: {error}")
+
+
 def display_menu():
     """Display the main application menu."""
 
@@ -236,7 +286,10 @@ def display_menu():
     print("5. View open work queue")
     print("6. Generate report")
     print("7. Search tickets")
-    print("8. Exit")
+    print("8. Add ticket note")
+    print("9. View ticket notes")
+    print("10. Engineering Understanding Check")
+    print("0. Exit")
     print("================================")
 
 
@@ -252,7 +305,7 @@ def main():
 
     while True:
         display_menu()
-        choice = input("Choose an option (1-8): ").strip()
+        choice = input("Choose an option (1-10): ").strip()
 
         if choice == "1":
             create_new_ticket(tickets)
@@ -276,6 +329,15 @@ def main():
             search_existing_tickets(tickets)
 
         elif choice == "8":
+            add_ticket_note(tickets)
+
+        elif choice == "9":
+            view_ticket_notes(tickets)
+
+        elif choice == "10":
+            run_understanding_check()
+
+        elif choice == "0":
             try:
                 save_tickets(tickets)
             except (OSError, ValueError, TypeError) as error:
@@ -286,7 +348,7 @@ def main():
             break
 
         else:
-            print("Invalid menu choice. Please enter a number from 1 to 8.")
+            print("Invalid menu choice. Please enter a number from 0 to 10.")
 
 
 if __name__ == "__main__":

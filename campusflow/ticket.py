@@ -50,6 +50,12 @@ def validate_ticket_data(title, category, urgency, affected_users):
 def calculate_priority(urgency, affected_users):
     """Calculate priority using the required rules."""
 
+    if (
+        not isinstance(urgency, str)
+        or urgency.strip().lower() not in VALID_URGENCIES
+    ):
+        raise ValueError("Urgency must be low, medium, or high.")
+
     urgency = urgency.strip().lower()
 
     if urgency == "high" and affected_users >= 10:

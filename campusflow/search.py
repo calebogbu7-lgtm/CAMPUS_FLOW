@@ -24,16 +24,41 @@ def search_tickets(
     if not isinstance(title, str):
         raise ValueError("Search title must be text.")
 
+    # Remove surrounding whitespace from optional filter values.
+    category = category.strip() if isinstance(category, str) else category
+    status = status.strip() if isinstance(status, str) else status
+    priority = priority.strip() if isinstance(priority, str) else priority
+
+    # Empty optional filters mean no restriction.
+    if category == "":
+        category = None
+
+    if status == "":
+        status = None
+
+    if priority == "":
+        priority = None
+
+    # Validate any filters that were actually supplied.
     if category is not None:
-        if not isinstance(category, str) or category.casefold() not in VALID_CATEGORIES:
+        if (
+            not isinstance(category, str)
+            or category.casefold() not in VALID_CATEGORIES
+        ):
             raise ValueError("Invalid category filter.")
 
     if status is not None:
-        if not isinstance(status, str) or status.casefold() not in VALID_STATUSES:
+        if (
+            not isinstance(status, str)
+            or status.casefold() not in VALID_STATUSES
+        ):
             raise ValueError("Invalid status filter.")
 
     if priority is not None:
-        if not isinstance(priority, str) or priority.casefold() not in VALID_PRIORITIES:
+        if (
+            not isinstance(priority, str)
+            or priority.casefold() not in VALID_PRIORITIES
+        ):
             raise ValueError("Invalid priority filter.")
 
     search_title = title.strip().casefold()

@@ -169,6 +169,59 @@ class TestSearchTickets(unittest.TestCase):
             ["T002", "T001", "T010", "T003"],
         )
 
+    def test_empty_optional_filters_do_not_restrict_results(self):
+        """Empty optional filters should not exclude any tickets."""
+        tickets = [
+            {
+                "ticket_id": "T001",
+                "title": "Broken projector",
+                "category": "Hardware",
+                "priority": "medium",
+                "status": "open",
+                "assigned_to": None,
+            },
+            {
+                "ticket_id": "T002",
+                "title": "WiFi failure",
+                "category": "Network",
+                "priority": "high",
+                "status": "in_progress",
+                "assigned_to": "Samuel",
+            },
+        ]
+
+        results = search_tickets(
+            tickets,
+            category="",
+            status="",
+            priority="",
+        )
+
+        self.assertEqual(len(results), 2)
+        self.assertEqual(
+            [ticket["ticket_id"] for ticket in results],
+            ["T001", "T002"],
+        )
+
+    def test_search_does_not_modify_original_tickets(self):
+        """Searching should not change the original ticket collection."""
+        tickets = [
+            {
+                "ticket_id": "T001",
+                "title": "Broken projector",
+                "category": "Hardware",
+                "priority": "medium",
+                "status": "open",
+                "assigned_to": None,
+            }
+        ]
+
+        original_tickets = [ticket.copy() for ticket in tickets]
+
+        search_tickets(tickets, title="projector")
+
+        self.assertEqual(tickets, original_tickets)
+
 
 if __name__ == "__main__":
     unittest.main()

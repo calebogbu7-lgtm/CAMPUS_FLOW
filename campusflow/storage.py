@@ -1,5 +1,3 @@
-"""Validated JSON storage for CampusFlow tickets."""
-
 import json
 from pathlib import Path
 
@@ -23,7 +21,6 @@ VALID_CATEGORIES = {"Network", "Hardware", "Software", "Other"}
 
 
 def validate_tickets(tickets):
-    """Validate the structure and values of saved ticket records."""
 
     if not isinstance(tickets, list):
         raise ValueError("Ticket data must be a JSON list.")
@@ -127,7 +124,7 @@ def validate_tickets(tickets):
 
 
 def save_tickets(tickets, file_path=DEFAULT_FILE):
-    """Validate and save tickets atomically."""
+
 
     validate_tickets(tickets)
 
@@ -146,7 +143,6 @@ def save_tickets(tickets, file_path=DEFAULT_FILE):
 
 
 def load_tickets(file_path=DEFAULT_FILE):
-    """Load, validate, and synchronize ticket IDs."""
 
     path = Path(file_path)
 

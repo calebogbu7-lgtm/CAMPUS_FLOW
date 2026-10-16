@@ -1,6 +1,3 @@
-"""Business logic for CampusFlow ticket follow-up notes."""
-
-
 def next_note_id(ticket):
     """Generate the next note ID without consuming it."""
 
@@ -20,8 +17,7 @@ def next_note_id(ticket):
 
 
 def add_note(tickets, ticket_id, author, message):
-    """Add a validated note to an open or in-progress ticket."""
-
+    
     if not isinstance(ticket_id, str) or not ticket_id.strip():
         raise ValueError("A valid ticket ID is required.")
 

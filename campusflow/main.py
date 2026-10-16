@@ -193,11 +193,7 @@ def show_work_queue(tickets):
     print("\n--- Open Work Queue ---")
 
     try:
-        queue = get_work_queue(tickets)
-        open_tickets = sort_search_results([
-            ticket for ticket in queue
-            if ticket.get("status", "").casefold() == "open"
-        ])
+        open_tickets = get_work_queue(tickets)
     except (ValueError, TypeError, KeyError, AttributeError) as error:
         print(f"Could not retrieve the work queue: {error}")
         return

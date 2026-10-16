@@ -136,6 +136,14 @@ def list_tickets(tickets):
         display_ticket(ticket)
 
 
+def find_ticket(tickets, ticket_id):
+    for ticket in tickets:
+        if ticket.get("ticket_id") == ticket_id:
+            return ticket
+
+    return None
+
+
 def assign_existing_ticket(tickets):
     """Assign a ticket to a staff member and persist the change."""
     print("\n--- Assign Ticket ---")
@@ -145,7 +153,8 @@ def assign_existing_ticket(tickets):
 
     staff_name = input("Enter staff name: ").strip()
     if save_change(
-        tickets, "assign ticket",
+        tickets,
+        "assign ticket",
         lambda: assign_ticket(ticket, staff_name),
     ):
         print("\nTicket assigned successfully.")
@@ -164,7 +173,8 @@ def change_ticket_status(tickets):
         new_status = "in_progress"
 
     if save_change(
-        tickets, "update ticket status",
+        tickets,
+        "update ticket status",
         lambda: update_status(ticket, new_status),
     ):
         print("\nTicket status updated successfully.")
@@ -341,8 +351,8 @@ def view_ticket_notes(tickets):
 def display_menu():
     """Display the main CampusFlow menu."""
     print(
-        "\n========== CampusFlow ==========\n"
-        "1. Create ticket\n"
+        "\n========== CampusFlow =========="
+        "\n1. Create ticket\n"
         "2. List tickets\n"
         "3. Assign ticket\n"
         "4. Update ticket status\n"

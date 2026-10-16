@@ -6,7 +6,6 @@ from campusflow.ticket import (
     validate_ticket_data,
 )
 
-
 class TestTicketCreation(unittest.TestCase):
 
     def test_critical_priority(self):

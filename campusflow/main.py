@@ -3,6 +3,7 @@ from campusflow.workflow import assign_ticket, update_status, get_work_queue
 from campusflow.reports import generate_report
 from campusflow.storage import load_tickets, save_tickets
 from campusflow.notes import add_note, get_ticket_notes
+from campusflow.search import search_tickets
 
 def display_ticket(ticket):
     print(f"\nTicket ID: {ticket['ticket_id']}")
@@ -159,6 +160,9 @@ def show_report(tickets):
 
         print("\n--- TICKET REPORT ---")
         print(f"Total tickets: {report['total_tickets']}")
+        print(f"Resolved: {report['resolved_count']}")
+        print(f"Unresolved: {report['unresolved_count']}")
+        print(f"Resolution percentage: {report['resolution_percentage']}%")
 
         print("\nBy status:")
         for status, count in report["by_status"].items():
@@ -168,8 +172,39 @@ def show_report(tickets):
         for priority, count in report["by_priority"].items():
             print(f"{priority}: {count}")
 
+        print("\nBy category:")
+        for category, count in report["by_category"].items():
+            print(f"{category}: {count}")
+
     except (KeyError, ValueError) as error:
         print(f"Error generating report: {error}")
+
+
+def search_tickets_cli(tickets):
+    query = input("Search title text (blank for all): ").strip()
+    category = input("Category filter (Network/Hardware/Software/Other or blank): ").strip()
+    status = input("Status filter (open/in_progress/resolved or blank): ").strip()
+    priority = input("Priority filter (critical/high/medium/low or blank): ").strip()
+
+    try:
+        matches = search_tickets(
+            tickets,
+            query=query,
+            category=category,
+            status=status,
+            priority=priority,
+        )
+    except ValueError as error:
+        print(f"Search error: {error}")
+        return
+
+    if not matches:
+        print("No matching tickets found.")
+        return
+
+    print("\n--- MATCHING TICKETS ---")
+    for ticket in matches:
+        display_ticket(ticket)
 
 
 def add_ticket_note(tickets):
@@ -224,7 +259,8 @@ def main():
         print("6. Generate report")
         print("7. Add note")
         print("8. View ticket notes")
-        print("9. Exit")
+        print("9. Search tickets")
+        print("10. Exit")
 
         choice = input("Choose an option: ").strip()
 
@@ -253,6 +289,9 @@ def main():
             view_ticket_notes(tickets)
 
         elif choice == "9":
+            search_tickets_cli(tickets)
+
+        elif choice == "10":
             try:
                 save_tickets(tickets)
                 print("CampusFlow closed. Goodbye!")
@@ -261,7 +300,7 @@ def main():
                 print(f"Error saving tickets: {error}")
 
         else:
-            print("Invalid choice. Enter a number from 1 to 9.")
+            print("Invalid choice. Enter a number from 1 to 10.")
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-from ticket import sync_ticket_id
+from campusflow.ticket import sync_ticket_id
 
 DEFAULT_FILE = Path("data/tickets.json")
 

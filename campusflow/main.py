@@ -1,9 +1,8 @@
-from ticket import create_ticket
-from workflow import assign_ticket, update_status, get_work_queue
-from reports import generate_report
-from storage import load_tickets, save_tickets
-from notes import add_note, get_ticket_notes
-
+from campusflow.ticket import create_ticket
+from campusflow.workflow import assign_ticket, update_status, get_work_queue
+from campusflow.reports import generate_report
+from campusflow.storage import load_tickets, save_tickets
+from campusflow.notes import add_note, get_ticket_notes
 
 def display_ticket(ticket):
     print(f"\nTicket ID: {ticket['ticket_id']}")

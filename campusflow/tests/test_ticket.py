@@ -1,11 +1,10 @@
 import unittest
 
-from ticket import (
+from campusflow.ticket import (
     calculate_priority,
     create_ticket,
     validate_ticket_data,
 )
-
 
 class TestTicketCreation(unittest.TestCase):
 

@@ -1,6 +1,6 @@
 import unittest
 
-from notes import add_note, get_ticket_notes
+from campusflow.notes import add_note, get_ticket_notes
 
 
 def make_ticket(status="open"):

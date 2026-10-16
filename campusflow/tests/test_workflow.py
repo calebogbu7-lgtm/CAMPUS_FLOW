@@ -1,6 +1,7 @@
 import unittest
 
-from workflow import assign_ticket, update_status, get_work_queue
+from campusflow.workflow import assign_ticket, update_status, get_work_queue
+
 
 
 def make_ticket(ticket_id="T001", priority="high", status="open"):

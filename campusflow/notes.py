@@ -1,5 +1,4 @@
 def next_note_id(ticket):
-    """Generate the next note ID without consuming it."""
 
     highest = 0
 
@@ -90,7 +89,6 @@ def add_note(tickets, ticket_id, author, message):
 
 
 def get_ticket_notes(tickets, ticket_id):
-    """Return ticket notes in numerical ID order."""
 
     matches = [
         ticket for ticket in tickets

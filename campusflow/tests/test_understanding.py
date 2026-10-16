@@ -14,7 +14,11 @@ class TestUnderstandingCheck(unittest.TestCase):
         self.assertEqual(len(QUESTION_BANK), 6)
 
     def test_invalid_answer_is_retried_and_score_is_correct(self):
-        answers = iter(["B", "z", "A", "C", "C", "B", "", "A", "B", "C", "D", "A"])
+        answers = iter([
+            "B", "z", "C", "A", "C", "C", "A",
+            "This should be rejected because the ticket is unassigned.",
+            "Zero percent avoids division errors when there are no tickets.",
+        ])
         with patch("builtins.input", side_effect=answers):
             with patch("builtins.print") as mock_print:
                 result = run_understanding_check()
@@ -24,7 +28,7 @@ class TestUnderstandingCheck(unittest.TestCase):
         self.assertIn("score", str(mock_print.call_args_list))
 
     def test_grade_answers_computes_score(self):
-        submitted = ["B", "C", "B", "C", "C", "B"]
+        submitted = ["B", "C", "A", "C", "C", "A"]
         self.assertEqual(grade_answers(submitted), 4)
 
 

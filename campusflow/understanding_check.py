@@ -99,8 +99,14 @@ def _request_explanation(index, answer, input_func, output_func):
         output_func("Please provide a short explanation of at least 5 characters.")
 
 
-def run_understanding_check(input_func=input, output_func=print):
+def run_understanding_check(input_func=None, output_func=None):
     """Run the Engineering Understanding Check and return a score + explanations."""
+    if input_func is None:
+        import builtins
+        input_func = builtins.input
+    if output_func is None:
+        output_func = print
+
     submitted_answers = []
 
     for question in QUESTION_BANK:

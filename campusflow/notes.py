@@ -88,7 +88,6 @@ def add_note(tickets, ticket_id, author, message):
         "message": message,
     }
 
-    # Change the ticket only after validation succeeds.
     ticket.setdefault("notes", []).append(new_note)
 
     return new_note

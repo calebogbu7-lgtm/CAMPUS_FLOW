@@ -4,6 +4,7 @@ from campusflow.reports import generate_report
 from campusflow.storage import load_tickets, save_tickets
 from campusflow.notes import add_note, get_ticket_notes
 from campusflow.search import search_tickets
+from campusflow.understanding_check import run_understanding_check
 
 def display_ticket(ticket):
     print(f"\nTicket ID: {ticket['ticket_id']}")
@@ -62,7 +63,6 @@ def create_new_ticket(tickets):
             affected_users=affected_users,
         )
 
-        # Ensure new tickets have a notes list.
         ticket.setdefault("notes", [])
 
         tickets.append(ticket)
@@ -207,6 +207,12 @@ def search_tickets_cli(tickets):
         display_ticket(ticket)
 
 
+def run_understanding_check_cli():
+    print("\n--- ENGINEERING UNDERSTANDING CHECK ---")
+    result = run_understanding_check()
+    print(f"\nCompleted. Final score: {result['score']}/{len(result['answers'])}")
+
+
 def add_ticket_note(tickets):
     ticket_id = input("Enter ticket ID: ").strip()
     author = input("Enter your name: ").strip()
@@ -260,7 +266,8 @@ def main():
         print("7. Add note")
         print("8. View ticket notes")
         print("9. Search tickets")
-        print("10. Exit")
+        print("10. Engineering Understanding Check")
+        print("11. Exit")
 
         choice = input("Choose an option: ").strip()
 
@@ -292,6 +299,9 @@ def main():
             search_tickets_cli(tickets)
 
         elif choice == "10":
+            run_understanding_check_cli()
+
+        elif choice == "11":
             try:
                 save_tickets(tickets)
                 print("CampusFlow closed. Goodbye!")
@@ -300,7 +310,7 @@ def main():
                 print(f"Error saving tickets: {error}")
 
         else:
-            print("Invalid choice. Enter a number from 1 to 10.")
+            print("Invalid choice. Enter a number from 1 to 11.")
 
 
 if __name__ == "__main__":

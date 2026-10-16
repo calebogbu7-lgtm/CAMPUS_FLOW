@@ -1,5 +1,5 @@
 # CAMPUS_FLOW C_F
-# CampusFlow
+# CampusFlow Next
 
 CampusFlow is a command-line helpdesk ticket management application
 built with Python. It helps users create, manage, assign, and track

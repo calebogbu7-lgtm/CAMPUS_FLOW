@@ -1,3 +1,5 @@
+import copy
+
 from campusflow.ticket import create_ticket
 from campusflow.workflow import assign_ticket, update_status, get_work_queue
 from campusflow.reports import generate_report
@@ -6,15 +8,16 @@ from campusflow.notes import add_note, get_ticket_notes
 from campusflow.search import search_tickets
 from campusflow.understanding_check import run_understanding_check
 
+
 def display_ticket(ticket):
-    print(f"\nTicket ID: {ticket['ticket_id']}")
+    print(f"\nTicket ID: {ticket.get('ticket_id', 'Not provided')}")
     print(f"Title: {ticket.get('title', 'Not provided')}")
     print(f"Category: {ticket.get('category', 'Not provided')}")
-    print(f"Urgency: {ticket['urgency']}")
-    print(f"Affected users: {ticket['affected_users']}")
-    print(f"Priority: {ticket['priority']}")
-    print(f"Status: {ticket['status']}")
-    print(f"Assigned to: {ticket['assigned_to']}")
+    print(f"Urgency: {ticket.get('urgency', 'Not provided')}")
+    print(f"Affected users: {ticket.get('affected_users', 'Not provided')}")
+    print(f"Priority: {ticket.get('priority', 'Not provided')}")
+    print(f"Status: {ticket.get('status', 'Not provided')}")
+    print(f"Assigned to: {ticket.get('assigned_to', 'Not provided')}")
 
 
 def create_new_ticket(tickets):
@@ -92,8 +95,9 @@ def list_tickets(tickets):
 
 
 def find_ticket(tickets, ticket_id):
+    """Find a ticket by ID, ignoring upper/lower case (t001 finds T001)."""
     for ticket in tickets:
-        if ticket.get("ticket_id") == ticket_id:
+        if str(ticket.get("ticket_id", "")).upper() == ticket_id.upper():
             return ticket
 
     return None
@@ -109,11 +113,15 @@ def assign_existing_ticket(tickets):
 
     staff_name = input("Enter staff name: ").strip()
 
+    snapshot = ticket.copy()  # remember the ticket as it was
+
     try:
         assign_ticket(ticket, staff_name)
         save_tickets(tickets)
         print("Ticket assigned successfully.")
     except (ValueError, OSError) as error:
+        ticket.clear()
+        ticket.update(snapshot)  # restore the original data
         print(f"Error: {error}")
 
 
@@ -125,15 +133,25 @@ def change_ticket_status(tickets):
         print("Ticket not found.")
         return
 
-    new_status = input(
-        "New status (in_progress/resolved): "
-    ).strip().lower()
+    print(f"Current status: {ticket.get('status', 'Not provided')}")
+    print(f"Assigned to: {ticket.get('assigned_to', 'Not provided')}")
+
+    new_status = (
+        input("New status (open/in_progress/resolved): ")
+        .strip()
+        .lower()
+        .replace(" ", "_")
+    )
+
+    snapshot = ticket.copy()  # remember the ticket as it was
 
     try:
         update_status(ticket, new_status)
         save_tickets(tickets)
         print("Ticket status updated successfully.")
     except (ValueError, OSError) as error:
+        ticket.clear()
+        ticket.update(snapshot)  # restore the original data
         print(f"Error: {error}")
 
 
@@ -214,9 +232,11 @@ def run_understanding_check_cli():
 
 
 def add_ticket_note(tickets):
-    ticket_id = input("Enter ticket ID: ").strip()
+    ticket_id = input("Enter ticket ID: ").strip().upper()
     author = input("Enter your name: ").strip()
     message = input("Enter note: ").strip()
+
+    snapshot = copy.deepcopy(tickets)  # remember all tickets as they were
 
     try:
         add_note(tickets, ticket_id, author, message)
@@ -224,11 +244,12 @@ def add_ticket_note(tickets):
         print("Note added successfully.")
 
     except (ValueError, OSError) as error:
+        tickets[:] = snapshot  # restore the original data
         print(f"Error: {error}")
 
 
 def view_ticket_notes(tickets):
-    ticket_id = input("Enter ticket ID: ").strip()
+    ticket_id = input("Enter ticket ID: ").strip().upper()
 
     try:
         notes = get_ticket_notes(tickets, ticket_id)

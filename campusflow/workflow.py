@@ -11,7 +11,7 @@ def update_status(ticket, new_status):
     allowed_transitions = {
         "open": ["in_progress"],
         "in_progress": ["resolved"],
-        "resolved": [],
+        "resolved": ["open"],  # changed: lets a resolved ticket be reopened
     }
 
     if new_status not in ("open", "in_progress", "resolved"):

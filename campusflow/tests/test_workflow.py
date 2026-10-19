@@ -3,7 +3,6 @@ import unittest
 from campusflow.workflow import assign_ticket, update_status, get_work_queue
 
 
-
 def make_ticket(ticket_id="T001", priority="high", status="open"):
     return {
         "ticket_id": ticket_id,
@@ -82,6 +81,29 @@ class TestWorkflow(unittest.TestCase):
             [ticket["priority"] for ticket in queue],
             ["critical", "high", "low"],
         )
+
+    def test_resolved_ticket_can_be_reopened(self):
+        ticket = make_ticket(status="resolved")
+
+        update_status(ticket, "open")
+
+        self.assertEqual(ticket["status"], "open")
+
+    def test_open_ticket_cannot_be_reopened(self):
+        ticket = make_ticket(status="open")
+
+        with self.assertRaises(ValueError):
+            update_status(ticket, "open")
+
+        self.assertEqual(ticket["status"], "open")
+
+    def test_in_progress_ticket_cannot_be_reopened(self):
+        ticket = make_ticket(status="in_progress")
+
+        with self.assertRaises(ValueError):
+            update_status(ticket, "open")
+
+        self.assertEqual(ticket["status"], "in_progress")
 
 
 if __name__ == "__main__":

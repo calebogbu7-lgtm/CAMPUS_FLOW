@@ -1,5 +1,3 @@
-"""Ticket validation, creation, and priority calculation."""
-
 import re
 
 VALID_URGENCIES = ("low", "medium", "high")
@@ -9,7 +7,6 @@ _next_ticket_number = 1
 
 
 def validate_ticket_data(*args):
-    """Support legacy two-argument and full four-argument validation."""
 
     if len(args) == 2:
         urgency, affected_users = args
@@ -67,7 +64,6 @@ def calculate_priority(urgency, affected_users):
 
 
 def generate_ticket_id(tickets=None):
-    """Generate a sequential ticket ID without duplicating existing IDs."""
 
     global _next_ticket_number
 
@@ -84,7 +80,6 @@ def generate_ticket_id(tickets=None):
 
 
 def sync_ticket_id(tickets):
-    """Restore the ticket ID counter after loading saved tickets."""
 
     global _next_ticket_number
 
@@ -100,7 +95,6 @@ def sync_ticket_id(tickets):
 
 
 def create_ticket(*args, tickets=None, **kwargs):
-    """Create either a legacy-format or full CampusFlow ticket."""
 
     if kwargs:
         title = kwargs.pop("title", None)

@@ -1,8 +1,4 @@
-"""Business logic for CampusFlow ticket follow-up notes."""
-
-
 def next_note_id(ticket):
-    """Generate the next note ID without consuming it."""
 
     highest = 0
 
@@ -20,8 +16,7 @@ def next_note_id(ticket):
 
 
 def add_note(tickets, ticket_id, author, message):
-    """Add a validated note to an open or in-progress ticket."""
-
+    
     if not isinstance(ticket_id, str) or not ticket_id.strip():
         raise ValueError("A valid ticket ID is required.")
 
@@ -88,14 +83,12 @@ def add_note(tickets, ticket_id, author, message):
         "message": message,
     }
 
-    # Change the ticket only after validation succeeds.
     ticket.setdefault("notes", []).append(new_note)
 
     return new_note
 
 
 def get_ticket_notes(tickets, ticket_id):
-    """Return ticket notes in numerical ID order."""
 
     matches = [
         ticket for ticket in tickets

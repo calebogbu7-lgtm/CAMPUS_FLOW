@@ -1,16 +1,15 @@
-"""Command-line interface for the CampusFlow helpdesk application."""
+"""Command-line interface for CampusFlow."""
 
 from copy import deepcopy
 from pprint import pprint
 
-from campusflow.storage import load_tickets, save_tickets
-from campusflow.ticket import create_ticket
-from campusflow.workflow import assign_ticket, get_work_queue, update_status
+from campusflow.notes import add_note, get_ticket_notes
 from campusflow.reports import generate_report
 from campusflow.search import search_tickets, sort_search_results
-from campusflow.notes import add_note, get_ticket_notes
+from campusflow.storage import load_tickets, save_tickets
+from campusflow.ticket import create_ticket
 from campusflow.understanding_check import run_understanding_check
-
+from campusflow.workflow import assign_ticket, get_work_queue, update_status
 
 CATEGORIES = {"network", "hardware", "software", "other"}
 STATUSES = {"open", "in_progress", "resolved"}
@@ -43,7 +42,8 @@ def find_ticket_by_id(tickets, ticket_id):
 
     requested_id = ticket_id.strip().casefold()
     matches = [
-        ticket for ticket in tickets
+        ticket
+        for ticket in tickets
         if isinstance(ticket, dict)
         and isinstance(ticket.get("ticket_id"), str)
         and ticket["ticket_id"].casefold() == requested_id
@@ -137,10 +137,10 @@ def list_tickets(tickets):
 
 
 def find_ticket(tickets, ticket_id):
+    """Find a ticket by ID, ignoring upper/lower case."""
     for ticket in tickets:
-        if ticket.get("ticket_id") == ticket_id:
+        if str(ticket.get("ticket_id", "")).upper() == ticket_id.upper():
             return ticket
-
     return None
 
 
@@ -201,7 +201,6 @@ def reopen_existing_ticket(tickets):
 def show_work_queue(tickets):
     """Display open tickets in priority order."""
     print("\n--- Open Work Queue ---")
-
     try:
         open_tickets = get_work_queue(tickets)
     except (ValueError, TypeError, KeyError, AttributeError) as error:
@@ -219,7 +218,6 @@ def show_work_queue(tickets):
 def show_report(tickets):
     """Generate and display the ticket report."""
     print("\n--- Ticket Report ---")
-
     try:
         report = generate_report(tickets)
         if report is not None:
@@ -261,6 +259,7 @@ def search_existing_tickets(tickets):
         "Priority (critical, high, medium, low): ", PRIORITIES
     )
 
+    snapshot = deepcopy(tickets)
     try:
         results = search_tickets(
             tickets,
@@ -271,6 +270,7 @@ def search_existing_tickets(tickets):
         )
     except (ValueError, TypeError, KeyError, AttributeError) as error:
         print(f"Search failed: {error}")
+        tickets[:] = snapshot
         return
 
     if not results:
@@ -397,13 +397,7 @@ def main():
             choice = input("Choose an option (0-11): ").strip()
         except EOFError:
             print("\nInput closed. Attempting to save before exiting.")
-            try:
-                save_tickets(tickets)
-            except SAVE_ERRORS as error:
-                print(f"Could not save tickets: {error}")
-                return
-            print("Tickets saved. Goodbye!")
-            return
+            choice = "0"
 
         if choice == "0":
             try:

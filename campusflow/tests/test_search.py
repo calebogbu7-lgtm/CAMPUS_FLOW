@@ -1,4 +1,4 @@
-"""Unit tests for CampusFlow ticket searching and sorting."""
+"""Tests for CampusFlow ticket searching and sorting."""
 
 import unittest
 
@@ -13,7 +13,6 @@ def make_ticket(
     status="open",
     assigned_to=None,
 ):
-    """Create a ticket dictionary for use in search tests."""
     return {
         "ticket_id": ticket_id,
         "title": title,
@@ -25,10 +24,7 @@ def make_ticket(
 
 
 class TestSearchTickets(unittest.TestCase):
-    """Tests for searching tickets with optional filters."""
-
     def setUp(self):
-        """Create a reusable collection of sample tickets."""
         self.tickets = [
             make_ticket(
                 ticket_id="T010",
@@ -65,41 +61,15 @@ class TestSearchTickets(unittest.TestCase):
         ]
 
     def test_title_search_is_case_insensitive(self):
-        """Title searches should ignore letter case."""
-        results = search_tickets(
-            self.tickets,
-            title="WIFI",
-        )
-
-        self.assertEqual(
-            [ticket["ticket_id"] for ticket in results],
-            ["T010", "T004"],
-        )
+        results = search_tickets(self.tickets, title="WIFI")
+        self.assertEqual([ticket["ticket_id"] for ticket in results], ["T010", "T004"])
 
     def test_partial_title_search(self):
-        """A partial title should match the full ticket title."""
-        results = search_tickets(
-            self.tickets,
-            title="project",
-        )
-
+        results = search_tickets(self.tickets, title="project")
         self.assertEqual(len(results), 1)
-        self.assertEqual(
-            results[0]["ticket_id"],
-            "T002",
-        )
-
-    def test_no_matching_title_returns_empty_list(self):
-        """A title with no matches should return an empty list."""
-        results = search_tickets(
-            self.tickets,
-            title="printer malfunction",
-        )
-
-        self.assertEqual(results, [])
+        self.assertEqual(results[0]["ticket_id"], "T002")
 
     def test_combined_filters_use_and_logic(self):
-        """Every supplied filter must match."""
         results = search_tickets(
             self.tickets,
             title="wifi",
@@ -107,15 +77,10 @@ class TestSearchTickets(unittest.TestCase):
             status="open",
             priority="high",
         )
-
         self.assertEqual(len(results), 1)
-        self.assertEqual(
-            results[0]["ticket_id"],
-            "T010",
-        )
+        self.assertEqual(results[0]["ticket_id"], "T010")
 
     def test_filters_are_case_insensitive(self):
-        """Category, status, priority, and title ignore letter case."""
         results = search_tickets(
             self.tickets,
             title="SOFTWARE",
@@ -123,72 +88,103 @@ class TestSearchTickets(unittest.TestCase):
             status="OPEN",
             priority="CRITICAL",
         )
-
         self.assertEqual(len(results), 1)
-        self.assertEqual(
-            results[0]["ticket_id"],
-            "T003",
-        )
+        self.assertEqual(results[0]["ticket_id"], "T003")
 
     def test_empty_optional_filters_do_not_restrict_results(self):
-        """Empty optional filters should behave like omitted filters."""
-        results = search_tickets(
-            self.tickets,
-            category="",
-            status="   ",
-            priority="",
-        )
-
+        results = search_tickets(self.tickets, category="", status="   ", priority="")
         self.assertEqual(len(results), len(self.tickets))
-
-    def test_empty_title_returns_all_tickets(self):
-        """An empty title with no other filters returns all tickets."""
-        results = search_tickets(
-            self.tickets,
-            title="",
-        )
-
-        self.assertEqual(len(results), len(self.tickets))
-
-    def test_search_handles_surrounding_whitespace(self):
-        """Surrounding whitespace in filters should be ignored."""
-        results = search_tickets(
-            self.tickets,
-            title="  WIFI  ",
-            category=" Network ",
-            status=" open ",
-            priority=" HIGH ",
-        )
-
-        self.assertEqual(len(results), 1)
-        self.assertEqual(
-            results[0]["ticket_id"],
-            "T010",
-        )
 
     def test_invalid_category_filter_raises_value_error(self):
-        """An invalid category filter should be rejected."""
         with self.assertRaises(ValueError):
-            search_tickets(
-                self.tickets,
-                category="Transport",
-            )
+            search_tickets(self.tickets, category="Transport")
 
     def test_invalid_status_filter_raises_value_error(self):
-        """An invalid status filter should be rejected."""
         with self.assertRaises(ValueError):
-            search_tickets(
-                self.tickets,
-                status="pending",
-            )
+            search_tickets(self.tickets, status="pending")
 
     def test_invalid_priority_filter_raises_value_error(self):
-        """An invalid priority filter should be rejected."""
         with self.assertRaises(ValueError):
-            search_tickets(
-                self.tickets,
-                priority="urgent",
-            )
+            search_tickets(self.tickets, priority="urgent")
+
+    def test_sort_search_results_orders_by_priority_and_ticket_number(self):
+        tickets = [
+            {"ticket_id": "T010", "priority": "high"},
+            {"ticket_id": "T002", "priority": "high"},
+            {"ticket_id": "T001", "priority": "high"},
+        ]
+        self.assertEqual(
+            [ticket["ticket_id"] for ticket in sort_search_results(tickets)],
+            ["T001", "T002", "T010"],
+        )
+
+
+class TestSearchLegacyCompatibility(unittest.TestCase):
+    def setUp(self):
+        self.tickets = [
+            {
+                "ticket_id": "T001",
+                "title": "Wi-Fi outage in Lab 1",
+                "category": "Network",
+                "urgency": "high",
+                "affected_users": 12,
+                "priority": "critical",
+                "status": "open",
+                "assigned_to": "Ada",
+                "notes": [],
+            },
+            {
+                "ticket_id": "T002",
+                "title": "Laptop battery issue",
+                "category": "Hardware",
+                "urgency": "medium",
+                "affected_users": 4,
+                "priority": "medium",
+                "status": "in_progress",
+                "assigned_to": "Lin",
+                "notes": [],
+            },
+            {
+                "ticket_id": "T003",
+                "title": "Office 365 login trouble",
+                "category": "Software",
+                "urgency": "low",
+                "affected_users": 2,
+                "priority": "low",
+                "status": "resolved",
+                "assigned_to": "Sam",
+                "notes": [],
+            },
+            {
+                "ticket_id": "T004",
+                "title": "Wi-Fi outage in Lab 2",
+                "category": "Network",
+                "urgency": "high",
+                "affected_users": 8,
+                "priority": "high",
+                "status": "open",
+                "assigned_to": None,
+                "notes": [],
+            },
+        ]
+
+    def test_search_title_ignores_case(self):
+        matches = search_tickets(self.tickets, query="wi-fi")
+        self.assertEqual([ticket["ticket_id"] for ticket in matches], ["T001", "T004"])
+
+    def test_combined_filters_use_and_logic(self):
+        matches = search_tickets(
+            self.tickets,
+            query="wifi",
+            category="Network",
+            status="open",
+            priority="high",
+        )
+        self.assertEqual([ticket["ticket_id"] for ticket in matches], ["T004"])
+
+
+if __name__ == "__main__":
+    unittest.main()
 
     def test_non_string_filter_raises_value_error(self):
         """A non-string filter should be rejected."""

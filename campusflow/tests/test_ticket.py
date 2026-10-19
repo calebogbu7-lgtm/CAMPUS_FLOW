@@ -26,18 +26,18 @@ class TestTicketCreation(unittest.TestCase):
 
     def test_zero_affected_users(self):
         with self.assertRaises(ValueError):
-            validate_ticket_data("low", 0)
+            validate_ticket_data("Test ticket", "Hardware", "low", 0)
 
     def test_fractional_affected_users(self):
         with self.assertRaises(ValueError):
-            validate_ticket_data("medium", 2.5)
+            validate_ticket_data("Test ticket", "Hardware", "medium", 2.5)
 
     def test_boolean_affected_users(self):
         with self.assertRaises(ValueError):
-            validate_ticket_data("low", True)
+            validate_ticket_data("Test ticket", "Hardware", "low", True)
 
     def test_ticket_structure(self):
-        ticket = create_ticket("high", 12)
+        ticket = create_ticket("Projector not working", "Hardware", "high", 12)
 
         self.assertEqual(len(ticket["ticket_id"]), 4)
         self.assertTrue(ticket["ticket_id"].startswith("T"))
@@ -48,8 +48,8 @@ class TestTicketCreation(unittest.TestCase):
         self.assertIsNone(ticket["assigned_to"])
 
     def test_ticket_ids_are_unique(self):
-        first = create_ticket("low", 1)
-        second = create_ticket("low", 1)
+        first = create_ticket("Test ticket", "Hardware", "low", 1)
+        second = create_ticket("Test ticket", "Hardware", "low", 1)
 
         self.assertNotEqual(first["ticket_id"], second["ticket_id"])
 

@@ -1,4 +1,4 @@
-"""Engineering Understanding Check for CampusFlow Next."""
+"""Engineering Understanding Check for CampusFlow."""
 
 QUESTION_BANK = [
     {
@@ -63,6 +63,33 @@ QUESTION_BANK = [
     },
 ]
 
+QUESTIONS = [
+    {
+        "id": index + 1,
+        "question": question["question"],
+        "options": question["choices"],
+        "correct_answer": question["answer"],
+    }
+    for index, question in enumerate(QUESTION_BANK)
+]
+
+
+class QuizResult(int):
+    def __new__(cls, score, answers=None, explanations=None):
+        obj = int.__new__(cls, score)
+        obj.answers = answers or []
+        obj.explanations = explanations or []
+        return obj
+
+    def __getitem__(self, key):
+        if key == "score":
+            return int(self)
+        if key == "answers":
+            return self.answers
+        if key == "explanations":
+            return self.explanations
+        raise KeyError(key)
+
 
 def grade_answers(submitted_answers):
     """Return the score for a list of submitted answer letters."""
@@ -72,6 +99,29 @@ def grade_answers(submitted_answers):
         if candidate == QUESTION_BANK[index]["answer"]:
             total += 1
     return total
+
+
+def score_answers(answers):
+    """Score a dictionary of answers keyed by question id."""
+    score = 0
+    for question in QUESTIONS:
+        answer = str(answers.get(question["id"], "")).strip().upper()
+        if answer == question["correct_answer"]:
+            score += 1
+    return score
+
+
+def get_valid_answer(prompt, input_func=None):
+    """Ask repeatedly until the user enters A, B, C, or D."""
+    if input_func is None:
+        input_func = input
+
+    valid_choices = {"A", "B", "C", "D"}
+    while True:
+        answer = input_func(prompt).strip().upper()
+        if answer in valid_choices:
+            return answer
+        print("Invalid choice. Please enter A, B, C, or D.")
 
 
 def _prompt_for_choice(question, input_func, output_func):
@@ -94,13 +144,13 @@ def _request_explanation(index, answer, input_func, output_func):
             f"Why is the answer {answer} correct?"
         )
         explanation = input_func("Your explanation: ").strip()
-        if len(explanation) >= 5:
+        if explanation:
             return explanation
-        output_func("Please provide a short explanation of at least 5 characters.")
+        output_func("Please enter an explanation before continuing.")
 
 
 def run_understanding_check(input_func=None, output_func=None):
-    """Run the Engineering Understanding Check and return a score + explanations."""
+    """Run the Engineering Understanding Check and return a score-like result."""
     if input_func is None:
         import builtins
         input_func = builtins.input
@@ -108,14 +158,13 @@ def run_understanding_check(input_func=None, output_func=None):
         output_func = print
 
     submitted_answers = []
-
     for question in QUESTION_BANK:
         submitted_answers.append(_prompt_for_choice(question, input_func, output_func))
 
     score = grade_answers(submitted_answers)
     explanations = []
 
-    output_func(f"\nFinal score: {score}/{len(QUESTION_BANK)}")
+    output_func(f"\nYour score: {score}/{len(QUESTION_BANK)}")
 
     for index, answer in enumerate(submitted_answers[:2]):
         explanation = _request_explanation(index, answer, input_func, output_func)
@@ -125,14 +174,11 @@ def run_understanding_check(input_func=None, output_func=None):
             "explanation": explanation,
         })
 
-    output_func("\nLearning notes:")
+    output_func("\n=== Mentor Discussion Notes ===")
     for entry in explanations:
         output_func(
-            f"Q{entry['question_number']}: {entry['answer']} - {entry['explanation']}"
+            f"Question {entry['question_number']}: {entry['explanation']}"
         )
 
-    return {
-        "score": score,
-        "answers": submitted_answers,
-        "explanations": explanations,
-    }
+    return QuizResult(score, submitted_answers, explanations)
+

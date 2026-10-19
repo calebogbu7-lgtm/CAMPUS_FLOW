@@ -6,6 +6,7 @@ from pathlib import Path
 from campusflow.storage import load_tickets, save_tickets
 from campusflow.ticket import create_ticket
 
+
 def sample_ticket(ticket_id="T001"):
     return {
         "ticket_id": ticket_id,

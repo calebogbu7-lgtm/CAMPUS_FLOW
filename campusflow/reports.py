@@ -1,39 +1,31 @@
+"""Generate ticket statistics and reports for CampusFlow."""
+
+VALID_STATUSES = ("open", "in_progress", "resolved")
+VALID_PRIORITIES = ("critical", "high", "medium", "low")
+VALID_CATEGORIES = ("Network", "Hardware", "Software", "Other")
+
+
 def generate_report(tickets):
+    """Generate summary statistics for a collection of tickets."""
     report = {
         "total_tickets": len(tickets),
-        "by_status": {
-            "open": 0,
-            "in_progress": 0,
-            "resolved": 0,
-        },
-        "by_priority": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0,
-        },
-        "by_category": {
-            "Network": 0,
-            "Hardware": 0,
-            "Software": 0,
-            "Other": 0,
-        },
-        "unresolved_count": 0,
-        "resolved_count": 0,
-        "resolution_percentage": 0,
+        "by_status": {status: 0 for status in VALID_STATUSES},
+        "by_priority": {priority: 0 for priority in VALID_PRIORITIES},
+        "by_category": {category: 0 for category in VALID_CATEGORIES},
+        "unresolved_tickets": 0,
+        "resolved_tickets": 0,
+        "resolution_percentage": 0.0,
     }
 
     for ticket in tickets:
         status = ticket["status"]
         priority = ticket["priority"]
-        category = ticket.get("category", "Other")
+        category = ticket["category"]
 
         if status not in report["by_status"]:
             raise ValueError(f"Invalid ticket status: {status}")
-
         if priority not in report["by_priority"]:
             raise ValueError(f"Invalid ticket priority: {priority}")
-
         if category not in report["by_category"]:
             raise ValueError(f"Invalid ticket category: {category}")
 
@@ -41,14 +33,15 @@ def generate_report(tickets):
         report["by_priority"][priority] += 1
         report["by_category"][category] += 1
 
-        if status == "resolved":
-            report["resolved_count"] += 1
-        elif status in {"open", "in_progress"}:
-            report["unresolved_count"] += 1
+    report["resolved_tickets"] = report["by_status"]["resolved"]
+    report["unresolved_tickets"] = (
+        report["by_status"]["open"] + report["by_status"]["in_progress"]
+    )
 
-    if report["total_tickets"]:
+    total_tickets = report["total_tickets"]
+    if total_tickets > 0:
         report["resolution_percentage"] = round(
-            (report["resolved_count"] / report["total_tickets"]) * 100,
+            (report["resolved_tickets"] / total_tickets) * 100,
             2,
         )
 
